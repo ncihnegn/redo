@@ -1,6 +1,8 @@
 module Main where
 
-import Lib
+import System.Process
 
 main :: IO ()
-main = someFunc
+main = do
+  _ <- createProcess $ shell "sh redo.do"
+  return()
