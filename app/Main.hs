@@ -1,9 +1,15 @@
 module Main where
 
-import System.Process
+import System.Environment (getArgs)
+import System.Process (createProcess, shell, waitForProcess)
 
-main :: IO ()
+main :: IO()
 main = do
-  (_, _, _, ph) <- createProcess $ shell "sh redo.do"
+  args <- getArgs
+  mapM_ redo args
+
+redo :: String-> IO ()
+redo target = do
+  (_, _, _, ph) <- createProcess $ shell $ "sh " ++ target ++ ".do"
   _ <- waitForProcess ph
   return()
