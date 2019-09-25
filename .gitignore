@@ -2,6 +2,8 @@
 app/Main
 app/Main.hi
 app/Main.o
+redo
+redo--redoing
 redo.cabal
 stack.yaml.lock
 *~

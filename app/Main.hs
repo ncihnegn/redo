@@ -1,5 +1,6 @@
 module Main where
 
+import System.Directory (renameFile)
 import System.Environment (getArgs)
 import System.Process (createProcess, shell, waitForProcess)
 
@@ -10,6 +11,8 @@ main = do
 
 redo :: String-> IO ()
 redo target = do
-  (_, _, _, ph) <- createProcess $ shell $ "sh " ++ target ++ ".do"
+  let tmp = target ++ "---redoing"
+  (_, _, _, ph) <- createProcess $ shell $ "sh " ++ target ++ ".do - - " ++ tmp ++ " > " ++ tmp
   _ <- waitForProcess ph
+  renameFile tmp target
   return()

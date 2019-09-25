@@ -1,1 +1,1 @@
-stack ghc app/Main.hs
+stack ghc -- app/Main.hs -v0 -o $3
