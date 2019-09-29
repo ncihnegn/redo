@@ -31,7 +31,7 @@ redo target = do
           removeFile tmp
 
 redoPath :: FilePath -> IO (Maybe FilePath)
-redoPath target = liftM safeHead $ filterM doesFileExist candidates
+redoPath target = safeHead `liftM` filterM doesFileExist candidates
   where
     candidates =
       [target ++ ".do"] ++
