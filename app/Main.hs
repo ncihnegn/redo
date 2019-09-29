@@ -10,7 +10,7 @@ import           System.IO          (hPutStrLn, stderr)
 import           System.Process     (createProcess, shell, waitForProcess)
 
 main :: IO ()
-main = getArgs >>= \ args -> mapM_ redo args
+main = getArgs >>= mapM_ redo
 
 redo :: String -> IO ()
 redo target = do
