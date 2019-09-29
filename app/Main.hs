@@ -4,7 +4,8 @@ import           Control.Monad      (filterM)
 import           System.Directory   (doesFileExist, removeFile, renameFile)
 import           System.Environment (getArgs)
 import           System.Exit        (ExitCode (..))
-import           System.FilePath    (hasExtension, replaceBaseName)
+import           System.FilePath    (hasExtension, replaceBaseName,
+                                     takeBaseName)
 import           System.IO          (hPutStrLn, stderr)
 import           System.Process     (createProcess, shell, waitForProcess)
 
@@ -22,7 +23,7 @@ redo target = do
     Just path -> do
       (_, _, _, ph) <-
         createProcess $
-        shell $ "sh " ++ path ++ " - - " ++ tmp ++ " > " ++ tmp
+        shell $ "sh " ++ path ++ " 0 " ++ takeBaseName target ++ " " ++ tmp ++ " > " ++ tmp
       exit <- waitForProcess ph
       case exit of
         ExitSuccess -> renameFile tmp target

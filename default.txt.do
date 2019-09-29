@@ -1,1 +1,1 @@
-pandoc -o README.txt README.md
+pandoc -t plain $2.md
