@@ -1,9 +1,7 @@
+*---redoing
+*~
 .stack-work/
-app/Main
-app/Main.hi
-app/Main.o
-redo
-redo--redoing
+dist-newstyle
+hello
 redo.cabal
 stack.yaml.lock
-*~
