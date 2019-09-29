@@ -1,6 +1,7 @@
 module Main where
 
 import           Control.Monad      (filterM, liftM)
+import           Data.Map.Lazy      (adjust, fromList, insert, toList)
 import           Data.Maybe         (listToMaybe)
 --import           Debug.Trace        (traceShow)
 import           System.Directory   (doesFileExist, removeFile, renameFile)
@@ -22,8 +23,7 @@ redo target = maybe printMissing redo' =<< redoPath target
     printMissing = error $ "No .do file found for target " ++ target
     redo' path = do
       oldEnv <- getEnvironment
-      let newEnv =
-            ("REDO_TARGET", target) : filter ((/= "REDO_TARGET") . fst) oldEnv
+      let newEnv = toList $ adjust (++ ":.") "PATH" $ insert "REDO_TARGET" target $ fromList oldEnv
       (_, _, _, ph) <-
         createProcess $
         --traceShow' $
