@@ -22,8 +22,12 @@ redo target = maybe printMissing redo' =<< redoPath target
     printMissing = error $ "No .do file found for target " ++ target
     redo' path = do
       oldEnv <- getEnvironment
-      (_, _, _, ph) <- createProcess
-          (shell $ cmd path) {env = Just (("REDO_TARGET", target) : oldEnv)}
+      let newEnv =
+            ("REDO_TARGET", target) : filter ((/= "REDO_TARGET") . fst) oldEnv
+      (_, _, _, ph) <-
+        createProcess $
+        --traceShow' $
+        (shell $ cmd path) {env = Just newEnv}
       exit <- waitForProcess ph
       case exit of
         ExitSuccess -> renameFile tmp target
