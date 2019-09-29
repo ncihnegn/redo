@@ -14,9 +14,10 @@ main = mapM_ redo =<< getArgs
 
 redo :: String -> IO ()
 redo target = do
-  maybe (error $ "No .do file found for target " ++ target) redo' =<<
+  maybe noPath redo' =<<
     redoPath target
   where
+    noPath = error $ "No .do file found for target " ++ target
     redo' path = do
           (_, _, _, ph) <-
             createProcess $ shell $ "sh " ++ path ++ " 0 " ++ takeBaseName target ++ " " ++ tmp ++ " > " ++ tmp
