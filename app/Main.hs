@@ -1,6 +1,6 @@
 module Main where
 
-import           Control.Monad      (filterM)
+import           Control.Monad      (filterM, liftM)
 import           System.Directory   (doesFileExist, removeFile, renameFile)
 import           System.Environment (getArgs)
 import           System.Exit        (ExitCode (..))
@@ -31,9 +31,7 @@ redo target = do
           removeFile tmp
 
 redoPath :: FilePath -> IO (Maybe FilePath)
-redoPath target = do
-  existingCandidates <- filterM doesFileExist candidates
-  return $ safeHead existingCandidates
+redoPath target = liftM safeHead $ filterM doesFileExist candidates
   where
     candidates =
       [target ++ ".do"] ++
