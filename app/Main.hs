@@ -17,15 +17,16 @@ redo target = maybe printMissing redo' =<< redoPath target
   where
     printMissing = error $ "No .do file found for target " ++ target
     redo' path = do
-          (_, _, _, ph) <-
-            createProcess $ shell $ "sh " ++ path ++ " 0 " ++ takeBaseName target ++ " " ++ tmp ++ " > " ++ tmp
-          exit <- waitForProcess ph
-          case exit of
-            ExitSuccess -> renameFile tmp target
-            ExitFailure code -> do
-              hPutStrLn stderr $
-                "Redo script exited with non-zero exit code " ++ show code
-              removeFile tmp
+      (_, _, _, ph) <- createProcess $ shell $ cmd path
+      exit <- waitForProcess ph
+      case exit of
+        ExitSuccess -> renameFile tmp target
+        ExitFailure code -> do
+          hPutStrLn stderr $
+            "Redo script exited with non-zero exit code " ++ show code
+          removeFile tmp
+    cmd path =
+      unwords ["sh ", path, " 0 ", takeBaseName target, " ", tmp, " > ", tmp]
     tmp = target ++ "---redoing"
 
 redoPath :: FilePath -> IO (Maybe FilePath)
