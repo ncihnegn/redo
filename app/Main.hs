@@ -23,7 +23,7 @@ redo target = maybe printMissing redo' =<< redoPath target
     redo' path = do
       oldEnv <- getEnvironment
       (_, _, _, ph) <- createProcess
-          (shell $ cmd path) {env = Just ([("REDO_TARGET", target)] ++ oldEnv)}
+          (shell $ cmd path) {env = Just (("REDO_TARGET", target) : oldEnv)}
       exit <- waitForProcess ph
       case exit of
         ExitSuccess -> renameFile tmp target
@@ -39,7 +39,5 @@ redoPath :: FilePath -> IO (Maybe FilePath)
 redoPath target = listToMaybe `liftM` filterM doesFileExist candidates
   where
     candidates =
-      [target ++ ".do"] ++
-      if hasExtension target
-        then [replaceBaseName target "default" ++ ".do"]
-        else []
+      (target ++ ".do") :
+        [replaceBaseName target "default" ++ ".do" | hasExtension target]
