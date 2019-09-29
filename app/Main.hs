@@ -2,14 +2,14 @@ module Main where
 
 import           Control.Monad      (filterM, liftM)
 import           Data.Maybe         (listToMaybe)
---import           Debug.Trace        (trace, traceShow)
+--import           Debug.Trace        (traceShow)
 import           System.Directory   (doesFileExist, removeFile, renameFile)
-import           System.Environment (getArgs)
+import           System.Environment (getArgs, getEnvironment)
 import           System.Exit        (ExitCode (..))
 import           System.FilePath    (hasExtension, replaceBaseName,
                                      takeBaseName)
 import           System.IO          (hPutStrLn, stderr)
-import           System.Process     (createProcess, shell, waitForProcess)
+import           System.Process     (createProcess, env, shell, waitForProcess)
 
 --traceShow' arg = traceShow arg arg
 
@@ -21,7 +21,9 @@ redo target = maybe printMissing redo' =<< redoPath target
   where
     printMissing = error $ "No .do file found for target " ++ target
     redo' path = do
-      (_, _, _, ph) <- createProcess $ shell $ cmd path
+      oldEnv <- getEnvironment
+      (_, _, _, ph) <- createProcess
+          (shell $ cmd path) {env = Just ([("REDO_TARGET", target)] ++ oldEnv)}
       exit <- waitForProcess ph
       case exit of
         ExitSuccess -> renameFile tmp target
