@@ -2,6 +2,7 @@ module Main where
 
 import           Control.Monad      (filterM, liftM)
 import           Data.Maybe         (listToMaybe)
+--import           Debug.Trace        (trace, traceShow)
 import           System.Directory   (doesFileExist, removeFile, renameFile)
 import           System.Environment (getArgs)
 import           System.Exit        (ExitCode (..))
@@ -9,6 +10,8 @@ import           System.FilePath    (hasExtension, replaceBaseName,
                                      takeBaseName)
 import           System.IO          (hPutStrLn, stderr)
 import           System.Process     (createProcess, shell, waitForProcess)
+
+--traceShow' arg = traceShow arg arg
 
 main :: IO ()
 main = mapM_ redo =<< getArgs
