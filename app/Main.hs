@@ -1,6 +1,7 @@
 module Main where
 
 import           Control.Monad      (filterM, liftM)
+import           Data.Maybe         (listToMaybe)
 import           System.Directory   (doesFileExist, removeFile, renameFile)
 import           System.Environment (getArgs)
 import           System.Exit        (ExitCode (..))
@@ -30,12 +31,10 @@ redo target = maybe printMissing redo' =<< redoPath target
     tmp = target ++ "---redoing"
 
 redoPath :: FilePath -> IO (Maybe FilePath)
-redoPath target = safeHead `liftM` filterM doesFileExist candidates
+redoPath target = listToMaybe `liftM` filterM doesFileExist candidates
   where
     candidates =
       [target ++ ".do"] ++
       if hasExtension target
         then [replaceBaseName target "default" ++ ".do"]
         else []
-    safeHead []    = Nothing
-    safeHead (x:_) = Just x
