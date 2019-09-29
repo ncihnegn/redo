@@ -15,10 +15,8 @@ main = mapM_ redo =<< getArgs
 redo :: String -> IO ()
 redo target = do
   let tmp = target ++ "---redoing"
-  maybePath <- redoPath target
-  case maybePath of
-    Nothing -> error $ "No .do file found for target " ++ target
-    Just path -> do
+  maybe (error $ "No .do file found for target " ++ target) 
+    (\ path -> do
       (_, _, _, ph) <-
         createProcess $
         shell $ "sh " ++ path ++ " 0 " ++ takeBaseName target ++ " " ++ tmp ++ " > " ++ tmp
@@ -28,7 +26,7 @@ redo target = do
         ExitFailure code -> do
           hPutStrLn stderr $
             "Redo script exited with non-zero exit code " ++ show code
-          removeFile tmp
+          removeFile tmp)=<< redoPath target
 
 redoPath :: FilePath -> IO (Maybe FilePath)
 redoPath target = safeHead `liftM` filterM doesFileExist candidates
