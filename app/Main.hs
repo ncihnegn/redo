@@ -23,7 +23,10 @@ redo target = maybe printMissing redo' =<< redoPath target
     printMissing = error $ "No .do file found for target " ++ target
     redo' path = do
       oldEnv <- getEnvironment
-      let newEnv = toList $ adjust (++ ":.") "PATH" $ insert "REDO_TARGET" target $ fromList oldEnv
+      let newEnv =
+            toList $
+            adjust (++ ":.") "PATH" $
+            insert "REDO_TARGET" target $ fromList oldEnv
       (_, _, _, ph) <-
         createProcess $
         --traceShow' $
