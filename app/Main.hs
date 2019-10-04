@@ -1,6 +1,7 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import           Control.Exception  (SomeException (..), catch)
+import           Control.Exception  (IOException, catch)
 import           Control.Monad      (filterM, liftM, unless)
 import           Data.Map.Lazy      (adjust, fromList, insert, toList)
 import           Data.Maybe         (listToMaybe)
@@ -13,6 +14,7 @@ import           System.Exit        (ExitCode (..))
 import           System.FilePath    (hasExtension, replaceBaseName,
                                      takeBaseName, (</>))
 import           System.IO          (hPutStrLn, stderr)
+import           System.IO.Error    (ioeGetErrorType)
 import           System.Process     (createProcess, env, shell, waitForProcess)
 
 traceShow' arg = traceShow arg arg
@@ -65,5 +67,5 @@ upToDate target = do
       catch
         (do oldMD5 <- traceShow' `liftM` readFile (depDir </> dep)
             return False)
-        (\(SomeException e) -> do hPutStrLn stderr $ show $ typeOf e
-                                  return False)
+        (\(e :: IOException) -> do hPutStrLn stderr $ show $ ioeGetErrorType e
+                                   return False)
