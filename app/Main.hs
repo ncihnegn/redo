@@ -7,6 +7,7 @@ import           Data.Map.Lazy      (adjust, fromList, insert, toList)
 import           Data.Maybe         (listToMaybe)
 import           Data.Typeable      (typeOf)
 import           Debug.Trace        (traceShow)
+import           GHC.IO.Exception   (IOErrorType (..))
 import           System.Directory   (doesFileExist, getDirectoryContents,
                                      removeFile, renameFile)
 import           System.Environment (getArgs, getEnvironment)
@@ -57,9 +58,11 @@ redoPath target = listToMaybe `liftM` filterM doesFileExist candidates
         [replaceBaseName target "default" ++ ".do" | hasExtension target]
 
 upToDate :: String -> IO Bool
-upToDate target = do
-  deps <- getDirectoryContents depDir
-  (traceShow' . all id) `liftM` mapM depUpToDate deps
+upToDate target =
+  catch
+    (do deps <- getDirectoryContents depDir
+        (traceShow' . all id) `liftM` mapM depUpToDate deps)
+    (\(e :: IOException) -> return False)
   where
     depDir = ".redo" </> target
     depUpToDate :: FilePath -> IO Bool
@@ -67,5 +70,4 @@ upToDate target = do
       catch
         (do oldMD5 <- traceShow' `liftM` readFile (depDir </> dep)
             return False)
-        (\(e :: IOException) -> do hPutStrLn stderr $ show $ ioeGetErrorType e
-                                   return False)
+        (\(e :: IOException) -> return (ioeGetErrorType e == InappropriateType))
