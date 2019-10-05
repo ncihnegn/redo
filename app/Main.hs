@@ -1,24 +1,28 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import           Control.Exception  (IOException, catch)
-import           Control.Monad      (filterM, liftM, unless)
-import           Data.Map.Lazy      (adjust, fromList, insert, toList)
-import           Data.Maybe         (listToMaybe)
-import           Data.Typeable      (typeOf)
-import           Debug.Trace        (traceShow)
-import           GHC.IO.Exception   (IOErrorType (..))
-import           System.Directory   (doesFileExist, getDirectoryContents,
-                                     removeFile, renameFile)
-import           System.Environment (getArgs, getEnvironment)
-import           System.Exit        (ExitCode (..))
-import           System.FilePath    (hasExtension, replaceBaseName,
-                                     takeBaseName, (</>))
-import           System.IO          (hPutStrLn, stderr)
-import           System.IO.Error    (ioeGetErrorType)
-import           System.Process     (createProcess, env, shell, waitForProcess)
+import           Control.Exception    (IOException, catch)
+import           Control.Monad        (filterM, liftM, unless)
+import qualified Data.ByteString.Lazy as BL
+import           Data.Digest.Pure.MD5 (md5)
+import           Data.Map.Lazy        (adjust, fromList, insert, toList)
+import           Data.Maybe           (listToMaybe)
+import           Data.Typeable        (typeOf)
+--import           Debug.Trace          (traceShow)
+import           GHC.IO.Exception     (IOErrorType (..))
+import           System.Directory     (doesFileExist, getDirectoryContents,
+                                       removeFile, renameFile)
+import           System.Environment   (getArgs, getEnvironment)
+import           System.Exit          (ExitCode (..))
+import           System.FilePath      (hasExtension, replaceBaseName,
+                                       takeBaseName, (</>))
+import           System.IO            (IOMode (..), hGetLine, hPutStrLn, stderr,
+                                       withFile)
+import           System.IO.Error      (ioeGetErrorType)
+import           System.Process       (createProcess, env, shell,
+                                       waitForProcess)
 
-traceShow' arg = traceShow arg arg
+--traceShow' arg = traceShow arg arg
 
 main :: IO ()
 main = mapM_ redo =<< getArgs
@@ -61,13 +65,14 @@ upToDate :: String -> IO Bool
 upToDate target =
   catch
     (do deps <- getDirectoryContents depDir
-        (traceShow' . all id) `liftM` mapM depUpToDate deps)
+        all id `liftM` mapM depUpToDate deps)
     (\(e :: IOException) -> return False)
   where
     depDir = ".redo" </> target
     depUpToDate :: FilePath -> IO Bool
     depUpToDate dep =
       catch
-        (do oldMD5 <- traceShow' `liftM` readFile (depDir </> dep)
-            return False)
+        (do oldMD5 <- withFile (depDir </> dep) ReadMode hGetLine
+            newMD5 <- md5 `liftM` BL.readFile dep
+            return $ oldMD5 == show newMD5)
         (\(e :: IOException) -> return (ioeGetErrorType e == InappropriateType))
