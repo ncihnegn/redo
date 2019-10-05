@@ -1,7 +1,5 @@
 #!/bin/sh
 
-echo $REDO_TARGET $@ 1>&2
 for dep in $@; do
-    mkdir -p ".redo/$REDO_TARGET"
     md5sum $dep | cut -f 1 -d ' ' > ".redo/$REDO_TARGET/$dep"
 done

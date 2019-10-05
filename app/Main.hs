@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import           Control.Exception    (IOException, catch)
+import           Control.Exception    (IOException, catch, throw)
 import           Control.Monad        (filterM, liftM, unless)
 import qualified Data.ByteString.Lazy as BL
 import           Data.Digest.Pure.MD5 (md5)
@@ -10,15 +10,17 @@ import           Data.Maybe           (listToMaybe)
 import           Data.Typeable        (typeOf)
 --import           Debug.Trace          (traceShow)
 import           GHC.IO.Exception     (IOErrorType (..))
-import           System.Directory     (doesFileExist, getDirectoryContents,
-                                       removeFile, renameFile)
+import           System.Directory     (createDirectoryIfMissing, doesFileExist,
+                                       getDirectoryContents,
+                                       removeDirectoryRecursive, removeFile,
+                                       renameFile)
 import           System.Environment   (getArgs, getEnvironment)
 import           System.Exit          (ExitCode (..))
 import           System.FilePath      (hasExtension, replaceBaseName,
                                        takeBaseName, (</>))
 import           System.IO            (IOMode (..), hGetLine, hPutStrLn, stderr,
                                        withFile)
-import           System.IO.Error      (ioeGetErrorType)
+import           System.IO.Error      (ioeGetErrorType, isDoesNotExistError)
 import           System.Process       (createProcess, env, shell,
                                        waitForProcess)
 
@@ -29,11 +31,20 @@ main = mapM_ redo =<< getArgs
 
 redo :: String -> IO ()
 redo target = do
-  upToDate' <- upToDate target
+  upToDate' <- upToDate target metaDepsDir
   unless upToDate' $ maybe printMissing redo' =<< redoPath target
   where
+    cmd path =
+      unwords ["sh ", path, " 0 ", takeBaseName target, " ", tmp, " > ", tmp]
     printMissing = error $ "No .do file found for target " ++ target
     redo' path = do
+      catch
+        (removeDirectoryRecursive metaDepsDir)
+        (\e ->
+           if isDoesNotExistError e
+             then return ()
+             else throw e)
+      createDirectoryIfMissing True $ metaDepsDir
       oldEnv <- getEnvironment
       let newEnv =
             toList $
@@ -50,8 +61,7 @@ redo target = do
           hPutStrLn stderr $
             "Redo script exited with non-zero exit code " ++ show code
           removeFile tmp
-    cmd path =
-      unwords ["sh ", path, " 0 ", takeBaseName target, " ", tmp, " > ", tmp]
+    metaDepsDir = ".redo" </> target
     tmp = target ++ "---redoing"
 
 redoPath :: FilePath -> IO (Maybe FilePath)
@@ -61,14 +71,14 @@ redoPath target = listToMaybe `liftM` filterM doesFileExist candidates
       (target ++ ".do") :
         [replaceBaseName target "default" ++ ".do" | hasExtension target]
 
-upToDate :: String -> IO Bool
-upToDate target =
+upToDate :: String -> FilePath -> IO Bool
+upToDate target metaDepsDir =
   catch
     (do deps <- getDirectoryContents depDir
         all id `liftM` mapM depUpToDate deps)
     (\(e :: IOException) -> return False)
   where
-    depDir = ".redo" </> target
+    depDir = metaDepsDir </> target
     depUpToDate :: FilePath -> IO Bool
     depUpToDate dep =
       catch
