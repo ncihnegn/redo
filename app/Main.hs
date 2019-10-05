@@ -1,14 +1,14 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import           Control.Exception    (IOException, catch, throw)
-import           Control.Monad        (filterM, liftM, unless)
+import           Control.Exception    (IOException, catch, catchJust, throw)
+import           Control.Monad        (filterM, guard, liftM, unless)
 import qualified Data.ByteString.Lazy as BL
 import           Data.Digest.Pure.MD5 (md5)
 import           Data.Map.Lazy        (adjust, fromList, insert, toList)
 import           Data.Maybe           (listToMaybe)
 import           Data.Typeable        (typeOf)
---import           Debug.Trace          (traceShow)
+import           Debug.Trace          (traceShow)
 import           GHC.IO.Exception     (IOErrorType (..))
 import           System.Directory     (createDirectoryIfMissing, doesFileExist,
                                        getDirectoryContents,
@@ -24,7 +24,7 @@ import           System.IO.Error      (ioeGetErrorType, isDoesNotExistError)
 import           System.Process       (createProcess, env, shell,
                                        waitForProcess)
 
---traceShow' arg = traceShow arg arg
+traceShow' arg = traceShow arg arg
 
 main :: IO ()
 main = mapM_ redo =<< getArgs
@@ -38,22 +38,18 @@ redo target = do
       unwords ["sh ", path, " 0 ", takeBaseName target, " ", tmp, " > ", tmp]
     printMissing = error $ "No .do file found for target " ++ target
     redo' path = do
-      catch
+      catchJust
+        (guard . isDoesNotExistError)
         (removeDirectoryRecursive metaDepsDir)
-        (\e ->
-           if isDoesNotExistError e
-             then return ()
-             else throw e)
-      createDirectoryIfMissing True $ metaDepsDir
+        (\_ -> return ())
+      createDirectoryIfMissing True metaDepsDir
       oldEnv <- getEnvironment
       let newEnv =
             toList $
             adjust (++ ":.") "PATH" $
             insert "REDO_TARGET" target $ fromList oldEnv
       (_, _, _, ph) <-
-        createProcess $
-        --traceShow' $
-        (shell $ cmd path) {env = Just newEnv}
+        createProcess $ traceShow' $ (shell $ cmd path) {env = Just newEnv}
       exit <- waitForProcess ph
       case exit of
         ExitSuccess -> renameFile tmp target
@@ -75,7 +71,7 @@ upToDate :: String -> FilePath -> IO Bool
 upToDate target metaDepsDir =
   catch
     (do deps <- getDirectoryContents depDir
-        all id `liftM` mapM depUpToDate deps)
+        and `liftM` mapM depUpToDate deps)
     (\(e :: IOException) -> return False)
   where
     depDir = metaDepsDir </> target
