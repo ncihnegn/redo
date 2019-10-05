@@ -32,6 +32,7 @@ main = mapM_ redo =<< getArgs
 md5' ::FilePath -> IO String
 md5' path = (show . md5) `liftM` BL.readFile path
 
+--TODO: rebo when target is missing
 redo :: String -> IO ()
 redo target = do
   upToDate' <- upToDate target metaDepsDir
@@ -72,9 +73,11 @@ redoPath target = listToMaybe `liftM` filterM doesFileExist candidates
       [replaceBaseName target "default" ++ ".do" | hasExtension target]
 
 upToDate :: String -> FilePath -> IO Bool
-upToDate target metaDepsDir = do
-  deps <- getDirectoryContents metaDepsDir
-  and `liftM` mapM depUpToDate deps
+upToDate target metaDepsDir =
+  catch
+    (do deps <- getDirectoryContents metaDepsDir
+        and `liftM` mapM depUpToDate deps)
+    (\(e :: IOException) -> return False)
   where
     depUpToDate :: FilePath -> IO Bool
     depUpToDate dep =
