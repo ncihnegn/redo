@@ -29,10 +29,13 @@ traceShow' arg = traceShow arg arg
 main :: IO ()
 main = mapM_ redo =<< getArgs
 
+md5' ::FilePath -> IO String
+md5' path = (show . md5) `liftM` BL.readFile path
+
 redo :: String -> IO ()
 redo target = do
   upToDate' <- upToDate target metaDepsDir
-  unless upToDate' $ maybe printMissing redo' =<< redoPath target
+  unless (traceShow' upToDate') $ maybe printMissing redo' =<< redoPath target
   where
     cmd path =
       unwords ["sh ", path, " 0 ", takeBaseName target, " ", tmp, " > ", tmp]
@@ -43,13 +46,14 @@ redo target = do
         (removeDirectoryRecursive metaDepsDir)
         (\_ -> return ())
       createDirectoryIfMissing True metaDepsDir
+      writeFile (metaDepsDir </> path) =<< md5' path
       oldEnv <- getEnvironment
       let newEnv =
             toList $
             adjust (++ ":.") "PATH" $
             insert "REDO_TARGET" target $ fromList oldEnv
       (_, _, _, ph) <-
-        createProcess $ traceShow' $ (shell $ cmd path) {env = Just newEnv}
+        createProcess $ (shell $ cmd path) {env = Just newEnv}
       exit <- waitForProcess ph
       case exit of
         ExitSuccess -> renameFile tmp target
@@ -65,20 +69,17 @@ redoPath target = listToMaybe `liftM` filterM doesFileExist candidates
   where
     candidates =
       (target ++ ".do") :
-        [replaceBaseName target "default" ++ ".do" | hasExtension target]
+      [replaceBaseName target "default" ++ ".do" | hasExtension target]
 
 upToDate :: String -> FilePath -> IO Bool
-upToDate target metaDepsDir =
-  catch
-    (do deps <- getDirectoryContents depDir
-        and `liftM` mapM depUpToDate deps)
-    (\(e :: IOException) -> return False)
+upToDate target metaDepsDir = do
+  deps <- getDirectoryContents metaDepsDir
+  and `liftM` mapM depUpToDate deps
   where
-    depDir = metaDepsDir </> target
     depUpToDate :: FilePath -> IO Bool
     depUpToDate dep =
       catch
-        (do oldMD5 <- withFile (depDir </> dep) ReadMode hGetLine
-            newMD5 <- md5 `liftM` BL.readFile dep
-            return $ oldMD5 == show newMD5)
+        (do oldMD5 <- withFile (metaDepsDir </> dep) ReadMode hGetLine
+            newMD5 <- md5' dep
+            return $ oldMD5 == newMD5)
         (\(e :: IOException) -> return (ioeGetErrorType e == InappropriateType))
