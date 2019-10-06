@@ -1,7 +1,6 @@
 *---redoing
 *~
-.stack-work/
-README.txt
+.*
 dist-newstyle
 hello
 redo.cabal

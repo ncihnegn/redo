@@ -14,7 +14,8 @@ import           System.Directory     (createDirectoryIfMissing, doesFileExist,
                                        getDirectoryContents,
                                        removeDirectoryRecursive, removeFile,
                                        renameFile)
-import           System.Environment   (getArgs, getEnvironment)
+import           System.Environment   (getArgs, getEnvironment, getProgName,
+                                       lookupEnv)
 import           System.Exit          (ExitCode (..))
 import           System.FilePath      (hasExtension, replaceBaseName,
                                        takeBaseName, (</>))
@@ -27,20 +28,37 @@ import           System.Process       (createProcess, env, shell,
 traceShow' arg = traceShow arg arg
 
 main :: IO ()
-main = mapM_ redo =<< getArgs
+main = do
+  mapM_ redo =<< getArgs
+  progName <- getProgName
+  redoTarget' <- lookupEnv "REDO_TARGET"
+  case (progName, redoTarget') of
+    ("redo-ifchange", Just redoTarget) ->
+      mapM_ (writeMD5 redoTarget) =<< getArgs
+    ("redo-ifchange", Nothing) ->
+      error "Missing REDO_TARGET environment variable"
+    _ -> return ()
+  where
+    writeMD5 redoTarget dep =
+      writeFile (metaDir </> redoTarget </> dep) =<< md5' dep
 
 md5' ::FilePath -> IO String
 md5' path = (show . md5) `liftM` BL.readFile path
+
+metaDir = ".redo"
 
 --TODO: rebo when target is missing
 redo :: String -> IO ()
 redo target = do
   upToDate' <- upToDate metaDepsDir
-  unless (traceShow' upToDate') $ maybe printMissing redo' =<< redoPath target
+  unless (traceShow' upToDate') $ maybe missingDo redo' =<< redoPath target
   where
     cmd path =
       unwords ["sh ", path, " 0 ", takeBaseName target, " ", tmp, " > ", tmp]
-    printMissing = error $ "No .do file found for target " ++ target
+    metaDepsDir = metaDir </> target
+    missingDo = do
+      exists <- doesFileExist target
+      unless exists . error $ "No .do file found for target " ++ target
     redo' path = do
       catchJust
         (guard . isDoesNotExistError)
@@ -61,7 +79,6 @@ redo target = do
           hPutStrLn stderr $
             "Redo script exited with non-zero exit code " ++ show code
           removeFile tmp
-    metaDepsDir = ".redo" </> target
     tmp = target ++ "---redoing"
 
 redoPath :: FilePath -> IO (Maybe FilePath)
