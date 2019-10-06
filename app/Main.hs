@@ -1,13 +1,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import           Control.Exception    (IOException, catch, catchJust, throw)
+import           Control.Exception    (IOException, catch, catchJust)
 import           Control.Monad        (filterM, guard, liftM, unless)
 import qualified Data.ByteString.Lazy as BL
 import           Data.Digest.Pure.MD5 (md5)
 import           Data.Map.Lazy        (adjust, fromList, insert, toList)
 import           Data.Maybe           (listToMaybe)
-import           Data.Typeable        (typeOf)
 import           Debug.Trace          (traceShow)
 import           GHC.IO.Exception     (IOErrorType (..))
 import           System.Directory     (createDirectoryIfMissing, doesFileExist,
@@ -25,6 +24,7 @@ import           System.IO.Error      (ioeGetErrorType, isDoesNotExistError)
 import           System.Process       (createProcess, env, shell,
                                        waitForProcess)
 
+traceShow' :: Show a => a -> a
 traceShow' arg = traceShow arg arg
 
 main :: IO ()
@@ -45,6 +45,7 @@ main = do
 md5' ::FilePath -> IO String
 md5' path = (show . md5) `liftM` BL.readFile path
 
+metaDir :: String
 metaDir = ".redo"
 
 --TODO: rebo when target is missing
@@ -93,7 +94,7 @@ upToDate metaDepsDir =
   catch
     (do deps <- getDirectoryContents metaDepsDir
         and `liftM` mapM depUpToDate deps)
-    (\(e :: IOException) -> return False)
+    (\(_ :: IOException) -> return False)
   where
     depUpToDate :: FilePath -> IO Bool
     depUpToDate dep =
