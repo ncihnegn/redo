@@ -35,7 +35,7 @@ md5' path = (show . md5) `liftM` BL.readFile path
 --TODO: rebo when target is missing
 redo :: String -> IO ()
 redo target = do
-  upToDate' <- upToDate target metaDepsDir
+  upToDate' <- upToDate metaDepsDir
   unless (traceShow' upToDate') $ maybe printMissing redo' =<< redoPath target
   where
     cmd path =
@@ -50,8 +50,7 @@ redo target = do
       writeFile (metaDepsDir </> path) =<< md5' path
       oldEnv <- getEnvironment
       let newEnv =
-            toList $
-            adjust (++ ":.") "PATH" $
+            toList . adjust (++ ":.") "PATH" $
             insert "REDO_TARGET" target $ fromList oldEnv
       (_, _, _, ph) <-
         createProcess $ (shell $ cmd path) {env = Just newEnv}
@@ -72,8 +71,8 @@ redoPath target = listToMaybe `liftM` filterM doesFileExist candidates
       (target ++ ".do") :
       [replaceBaseName target "default" ++ ".do" | hasExtension target]
 
-upToDate :: String -> FilePath -> IO Bool
-upToDate target metaDepsDir =
+upToDate :: FilePath -> IO Bool
+upToDate metaDepsDir =
   catch
     (do deps <- getDirectoryContents metaDepsDir
         and `liftM` mapM depUpToDate deps)
