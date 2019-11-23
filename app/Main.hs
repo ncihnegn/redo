@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+
 module Main where
 
 import           Control.Exception    (IOException, catch, catchJust)
@@ -48,14 +49,12 @@ md5' path = (show . md5) `liftM` BL.readFile path
 metaDir :: String
 metaDir = ".redo"
 
---TODO: rebo when target is missing
+--TODO: redo when target is missing
 redo :: String -> IO ()
 redo target = do
   upToDate' <- upToDate metaDepsDir
-  unless (traceShow' upToDate') $ maybe missingDo redo' =<< redoPath target
+  unless upToDate' $ maybe missingDo redo' =<< redoPath target
   where
-    cmd path =
-      unwords ["sh ", path, " 0 ", takeBaseName target, " ", tmp, " > ", tmp]
     metaDepsDir = metaDir </> target
     missingDo = do
       exists <- doesFileExist target
@@ -72,15 +71,19 @@ redo target = do
             toList . adjust (++ ":.") "PATH" $
             insert "REDO_TARGET" target $ fromList oldEnv
       (_, _, _, ph) <-
-        createProcess $ (shell $ cmd path) {env = Just newEnv}
+        createProcess (shell . traceShow' $ cmd path) {env = Just newEnv}
       exit <- waitForProcess ph
       case exit of
         ExitSuccess -> renameFile tmp target
         ExitFailure code -> do
           hPutStrLn stderr $
-            "Redo script exited with non-zero exit code " ++ show code
+            "Redo script exited with non-zero exit code: " ++ show code
           removeFile tmp
-    tmp = target ++ "---redoing"
+      where
+        tmp = target ++ "---redoing"
+        cmd path =
+          unwords
+            ["sh ", path, " 0 ", takeBaseName target, " ", tmp, " > ", tmp]
 
 redoPath :: FilePath -> IO (Maybe FilePath)
 redoPath target = listToMaybe `liftM` filterM doesFileExist candidates
